@@ -19,6 +19,7 @@ import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.ImageReader;
+import android.net.wifi.aware.Characteristics;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.annotation.NonNull;
@@ -163,6 +164,13 @@ public class Camera2Controller {
      */
     private int mSensorOrientation;
 
+    /**
+     * Camera facing
+     */
+    private Integer mLensFacing = CameraCharacteristics.LENS_FACING_BACK;
+
+    private boolean mWideAngleOpened;
+
     public Camera2Controller(Context context, AutoFitTextureView textureView){
         this.mContext = context;
         this.mTextureView = textureView;
@@ -199,9 +207,7 @@ public class Camera2Controller {
         }
 
         @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surfaceTexture) {
-
-        }
+        public void onSurfaceTextureUpdated(SurfaceTexture surfaceTexture) { }
     };
 
     private void openCamera(int width, int height) {
@@ -228,6 +234,26 @@ public class Camera2Controller {
     }
 
     /**
+     * This function flips camera
+     */
+    public void flipCamera(){
+        if (mLensFacing.equals(CameraCharacteristics.LENS_FACING_BACK)){
+            mLensFacing = CameraCharacteristics.LENS_FACING_FRONT;
+        }else {
+            mLensFacing = CameraCharacteristics.LENS_FACING_BACK;
+        }
+        stopCamera();
+        connectCamera();
+    }
+
+    /**
+     * This function  is used to switch from normal to wide camera
+     */
+    public void switchToWide(){
+
+    }
+
+    /**
      * Sets up member variables related to camera.
      *
      * @param width  The width of available size for camera preview
@@ -243,7 +269,7 @@ public class Camera2Controller {
 
                 // We don't use a front facing camera in this sample.
                 Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
-                if (facing != null && facing == CameraCharacteristics.LENS_FACING_FRONT) {
+                if (facing != null && !facing.equals(mLensFacing)) {
                     continue;
                 }
 
@@ -253,9 +279,14 @@ public class Camera2Controller {
                     continue;
                 }
 
+                Size[] sizes = map.getOutputSizes(ImageFormat.JPEG);
+                if (sizes == null){
+                    continue;
+                }
+
                 // For still image captures, we use the largest available size.
                 Size largest = Collections.max(
-                        Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
+                        Arrays.asList(sizes),
                         new CompareSizesByArea());
                 mImageReader = ImageReader.newInstance(largest.getWidth(), largest.getHeight(),
                         ImageFormat.JPEG, /*maxImages*/2);
